@@ -17,7 +17,7 @@
 #define BACKGROND_COLOR_BLUE (2)
 
 #define RESULT_FILE_WORDS (200)
-#define MAX_CLUSTERS (30) /* number of cluster */
+#define MAX_CLUSTERS (200) /* number of cluster */
 #define DEBUG_MODE (1)/*If u input 0,this program runs as runnning mode. 1 is debug mode*/
 
 bool findNumVector(int findnum, std::vector<int> nums) {
@@ -35,7 +35,7 @@ bool findNumVector(int findnum, std::vector<int> nums) {
 cv::Mat* BackgroundSubtraction(cv::Mat nowImage, cv::Mat backgroundImage) {
 
     //閾値
-    const char th = 40;
+    const char th = 50;
 
     cv::Mat diff, gry, dst;
 
@@ -189,12 +189,19 @@ cv::Mat* cvKMeansProcessing_AND_BackgroundSubtraction(cv::Mat nowImage, cv::Mat 
     std::vector<int> FillClusters;
     FillClusters.clear();
 
+    int clustersNum[MAX_CLUSTERS];
+
+    for (int i = 0; i < MAX_CLUSTERS; i++) {
+        clustersNum[i] = 0;
+    }
+
     for (int y = 0; y < SubtractionImage.rows; ++y) {
         for (int x = 0; x < SubtractionImage.cols; ++x) {
             // 画像のチャネル数分だけループ。白黒の場合は1回、カラーの場合は3回　　　　　
             for (int c = 0; c < SubtractionImage.channels(); ++c) {
                 if (static_cast<int>(SubtractionImage.data[y * SubtractionImage.step + x * SubtractionImage.elemSize() + c]) == 255) {
                     int idx = clusters->data.i[y * clusters->step + x];
+                    clustersNum[idx]++;
                     if (!findNumVector(idx, FillClusters)) {
                         FillClusters.push_back(idx);
                     }
@@ -208,7 +215,7 @@ cv::Mat* cvKMeansProcessing_AND_BackgroundSubtraction(cv::Mat nowImage, cv::Mat 
     for (i = 0; i < size; i++)
     {
         int idx = clusters->data.i[i];
-        if (findNumVector(idx, FillClusters))
+        if (findNumVector(idx, FillClusters) && clustersNum[idx] < 50 && clustersNum[idx] >10)
         {
             /*
             dst_img->imageData[i * 3 + 0] = (char)centers->data.fl[idx * 3 + 0];
