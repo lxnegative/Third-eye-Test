@@ -17,14 +17,25 @@
 #define BACKGROND_COLOR_BLUE (2)
 
 #define RESULT_FILE_WORDS (200)
-#define MAX_CLUSTERS (5) /* number of cluster */
+#define MAX_CLUSTERS (30) /* number of cluster */
 #define DEBUG_MODE (1)/*If u input 0,this program runs as runnning mode. 1 is debug mode*/
 
+bool findNumVector(int findnum, std::vector<int> nums) {
 
-cv::Mat BackgroundSubtraction(cv::Mat nowImage,cv::Mat backgroundImage) {
+    for (int num : nums) {
+        if (findnum == num) {
+            return true;
+        }
+    }
+
+    return false;
+
+}
+
+cv::Mat* BackgroundSubtraction(cv::Mat nowImage, cv::Mat backgroundImage) {
 
     //閾値
-    const char th = 35;
+    const char th = 40;
 
     cv::Mat diff, gry, dst;
 
@@ -38,9 +49,13 @@ cv::Mat BackgroundSubtraction(cv::Mat nowImage,cv::Mat backgroundImage) {
 
     //cv::erode(dst, dst, cv::Mat(), cv::Point(-1, -1), 1);
 
-    cv::dilate(dst, dst, cv::Mat(), cv::Point(-1, -1), 5);
+    //cv::dilate(dst, dst, cv::Mat(), cv::Point(-1, -1), 5);
 
-    return dst;
+    cv::Mat *resultImage = new cv::Mat();
+
+    *resultImage = dst.clone();
+
+    return resultImage;
 
 }
 
@@ -85,7 +100,7 @@ std::vector<cv::Mat*> cvKMeansProcessing(cv::Mat nowImage) {
 
     for (j = 0; j < MAX_CLUSTERS; j++)
     {
-       
+
         for (i = 0; i < size; i++)
         {
             int idx = clusters->data.i[i];
@@ -96,11 +111,11 @@ std::vector<cv::Mat*> cvKMeansProcessing(cv::Mat nowImage) {
                 dst_img->imageData[i * 3 + 1] = (char)centers->data.fl[idx * 3 + 1];
                 dst_img->imageData[i * 3 + 2] = (char)centers->data.fl[idx * 3 + 2];
                 */
-                
+
                 dst_img->imageData[i * 3 + 0] = (char)255;
                 dst_img->imageData[i * 3 + 1] = (char)255;
                 dst_img->imageData[i * 3 + 2] = (char)255;
-                
+
             }
             else
             {
@@ -132,16 +147,10 @@ std::vector<cv::Mat*> cvKMeansProcessing(cv::Mat nowImage) {
 
 }
 
-std::vector<cv::Mat*> cvKMeansProcessing_AND_BackgroundSubtraction(cv::Mat nowImage, cv::Mat SubtractionImage) {
+cv::Mat* cvKMeansProcessing_AND_BackgroundSubtraction(cv::Mat nowImage, cv::Mat SubtractionImage) {
 
-    IplImage temp = SubtractionImage;
-    IplImage* SubImage = &temp;
-
-
-    std::vector<cv::Mat*> result;
-    result.clear();
-
-
+    //IplImage temp = SubtractionImage;
+    //IplImage* SubImage = &temp;
 
     int i, j, size;
     IplImage *src_img = 0, *dst_img = 0;
@@ -153,13 +162,12 @@ std::vector<cv::Mat*> cvKMeansProcessing_AND_BackgroundSubtraction(cv::Mat nowIm
     //set background color
     int background_color[BACKGROND_COLOR_CHANNELS] = { 0,0,0 };
 
-
+    IplImage temp;
     temp = nowImage;
     src_img = &temp;
 
     if (src_img == 0) {
-        result.clear();
-        return result;
+        return nullptr;
     }
 
     size = src_img->width * src_img->height;
@@ -178,44 +186,60 @@ std::vector<cv::Mat*> cvKMeansProcessing_AND_BackgroundSubtraction(cv::Mat nowIm
         cvTermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 10, 1.0),
         1, 0, 0, centers, 0);
 
-    for (j = 0; j < MAX_CLUSTERS; j++)
-    {
+    std::vector<int> FillClusters;
+    FillClusters.clear();
 
-        for (i = 0; i < size; i++)
-        {
-            int idx = clusters->data.i[i];
-            if (j == idx)
-            {
-                /*
-                dst_img->imageData[i * 3 + 0] = (char)centers->data.fl[idx * 3 + 0];
-                dst_img->imageData[i * 3 + 1] = (char)centers->data.fl[idx * 3 + 1];
-                dst_img->imageData[i * 3 + 2] = (char)centers->data.fl[idx * 3 + 2];
-                */
-
-                dst_img->imageData[i * 3 + 0] = (char)255;
-                dst_img->imageData[i * 3 + 1] = (char)255;
-                dst_img->imageData[i * 3 + 2] = (char)255;
-
-            }
-            else
-            {
-                dst_img->imageData[i * 3 + 0] = background_color[BACKGROND_COLOR_BLUE];
-                dst_img->imageData[i * 3 + 1] = background_color[BACKGROND_COLOR_GREEN];
-                dst_img->imageData[i * 3 + 2] = background_color[BACKGROND_COLOR_RED];
+    for (int y = 0; y < SubtractionImage.rows; ++y) {
+        for (int x = 0; x < SubtractionImage.cols; ++x) {
+            // 画像のチャネル数分だけループ。白黒の場合は1回、カラーの場合は3回　　　　　
+            for (int c = 0; c < SubtractionImage.channels(); ++c) {
+                if (static_cast<int>(SubtractionImage.data[y * SubtractionImage.step + x * SubtractionImage.elemSize() + c]) == 255) {
+                    int idx = clusters->data.i[y * clusters->step + x];
+                    if (!findNumVector(idx, FillClusters)) {
+                        FillClusters.push_back(idx);
+                    }
+                }
+                break;
             }
         }
-
-        cv::Mat* temp = new cv::Mat();
-
-        *temp = cv::cvarrToMat(dst_img, true);
-
-        //cv::imshow("test", mat);
-
-        result.push_back(temp);
-
-        //cvSaveImage(file, dst_img, 0);
-        //printf("cluster %d image save completed.\n", j);
     }
+
+
+    for (i = 0; i < size; i++)
+    {
+        int idx = clusters->data.i[i];
+        if (findNumVector(idx, FillClusters))
+        {
+            /*
+            dst_img->imageData[i * 3 + 0] = (char)centers->data.fl[idx * 3 + 0];
+            dst_img->imageData[i * 3 + 1] = (char)centers->data.fl[idx * 3 + 1];
+            dst_img->imageData[i * 3 + 2] = (char)centers->data.fl[idx * 3 + 2];
+            */
+
+            dst_img->imageData[i * 3 + 0] = (char)255;
+            dst_img->imageData[i * 3 + 1] = (char)255;
+            dst_img->imageData[i * 3 + 2] = (char)255;
+
+        }
+        else
+        {
+            dst_img->imageData[i * 3 + 0] = background_color[BACKGROND_COLOR_BLUE];
+            dst_img->imageData[i * 3 + 1] = background_color[BACKGROND_COLOR_GREEN];
+            dst_img->imageData[i * 3 + 2] = background_color[BACKGROND_COLOR_RED];
+        }
+
+    }
+
+
+    cv::Mat* tem = new cv::Mat();
+
+    *tem = cv::cvarrToMat(dst_img, true);
+
+    //cv::imshow("test", mat);
+
+    //cvSaveImage(file, dst_img, 0);
+    //printf("cluster %d image save completed.\n", j);
+
 
     //cvReleaseImage(&SubImage);
     //cvReleaseImage(&src_img);
@@ -224,9 +248,11 @@ std::vector<cv::Mat*> cvKMeansProcessing_AND_BackgroundSubtraction(cv::Mat nowIm
     cvReleaseMat(&points);
     cvReleaseMat(&count);
 
-    return result;
+    return tem;
 
 }
+
+
 
 
 int main() {
@@ -236,20 +262,20 @@ int main() {
     cv::VideoCapture cap = cv::VideoCapture("768x576.avi");
 
 
-    cv::Mat frm, bg, dst1, diff, gry;
+    cv::Mat frm, bg, diff, gry;
 
-    std::vector<cv::Mat*> dst2;
-    
-
+    cv::Mat *dst1, *dst2;
 
 
-    
+    dst1 = new cv::Mat();
+
+
 
     //背景画像を取得
     cap >> frm;
     frm.copyTo(bg);
     //cv::imshow("bg", bg);
-    
+
     int interval = 0;
     int cnt = 0;
 
@@ -273,15 +299,15 @@ int main() {
 
         dst1 = BackgroundSubtraction(frm, bg);
 
-        dst2 = cvKMeansProcessing_AND_BackgroundSubtraction(frm, dst1);
+        dst2 = cvKMeansProcessing_AND_BackgroundSubtraction(frm, *dst1);
 
         //pointPolygonTestがカギを握る？
         //dst1 背景差分法の画像
         //dst2 領域分割した画像。領域別でvectorで管理
 
 
-        imshow("BackgroundSubtraction", dst1);
-        imshow("cvKMeansProcessing", *dst2[0]);
+        imshow("BackgroundSubtraction", *dst1);
+        imshow("cvKMeansProcessing", *dst2);
 
         imshow("frm", frm);
 
@@ -295,11 +321,13 @@ int main() {
 
     }
 
+    /*
     cv::imwrite("0.png", *dst2[0]);
     cv::imwrite("1.png", *dst2[1]);
     cv::imwrite("2.png", *dst2[2]);
     cv::imwrite("3.png", *dst2[3]);
     cv::imwrite("4.png", *dst2[4]);
+    */
 
     return 0;
 
