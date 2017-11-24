@@ -590,13 +590,13 @@ int main() {
                 }
             }
 
-
+            bg = frm.clone();
 
             cnt = 0;
 
         }
 
-        bg = frm.clone();
+        
 
         //cv::imshow("bg", bg);
 
@@ -624,36 +624,36 @@ int main() {
 
         imshow("frm", frm);
 
+        if (cnt == 0) {
 
+            char date[64];
+            time_t t = time(NULL);
+            strftime(date, sizeof(date), "%Y/%m/%d %a %H:%M:%S", localtime(&t));
 
-        char date[64];
-        time_t t = time(NULL);
-        strftime(date, sizeof(date), "%Y/%m/%d %a %H:%M:%S", localtime(&t));
+            std::string dateStr = date;
 
-        std::string dateStr = date;
+            printf("%s %d人\n", dateStr.c_str(), peoplePoint->size());
 
-        printf("%s %d人\n", dateStr.c_str(), peoplePoint->size());
+            std::string filename = "result.txt";
 
-        std::string filename = "result.txt";
+            std::ofstream writing_file;
+            writing_file.open(filename, std::ios::app);
 
-        std::ofstream writing_file;
-        writing_file.open(filename, std::ios::app);
+            writing_file << dateStr << " " << peoplePoint->size() << "人" << std::endl;
+            lineNum++;
 
-        writing_file << dateStr << " " << peoplePoint->size() << "人" << std::endl;
-        lineNum++;
+            writing_file.close();
 
-        writing_file.close();
+            if (lineNum > lineNumLimit) {
 
-        if (lineNum > lineNumLimit) {
+                remove("result_old.txt");
 
-            remove("result_old.txt");
+                rename("result.txt", "result_old.txt");
 
-            rename("result.txt", "result_old.txt");
+                lineNum = 0;
 
-            lineNum = 0;
-
+            }
         }
-
 
         /*
         Judgcnt++;
